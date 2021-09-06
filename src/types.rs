@@ -9,6 +9,7 @@ use crate::protocol::utils as protocol_utils;
 use crate::utils;
 pub use redis_protocol::resp2::types::Frame;
 use redis_protocol::resp2::types::NULL;
+use redis_protocol::resp3::types::RespVersion as ProtocolVersion;
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::{BTreeMap, HashMap, VecDeque};
@@ -38,6 +39,40 @@ pub type Any = bool;
 pub type ConnectHandle = JoinHandle<Result<(), RedisError>>;
 /// A tuple of `(offset, count)` values for commands that allow paging through results.
 pub type Limit = (i64, i64);
+
+/// The Redis protocol version to use when establishing connections.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum RespVersion {
+  /// Always use RESP2.
+  Resp2,
+  /// Try to use RESP3, but fall back to RESP2 if needed.
+  TryResp3,
+  /// Always use RESP3, returning an error if the server cannot use RESP3.
+  Resp3,
+}
+
+impl Default for RespVersion {
+  fn default() -> Self {
+    RespVersion::Resp2
+  }
+}
+
+impl RespVersion {
+  pub(crate) fn to_protocol_version(&self) -> ProtocolVersion {
+    match self {
+      RespVersion::Resp2 => ProtocolVersion::RESP2,
+      RespVersion::Resp3 => ProtocolVersion::RESP3,
+      RespVersion::TryResp3 => ProtocolVersion::RESP3,
+    }
+  }
+
+  pub(crate) fn is_resp3(&self) -> bool {
+    match self {
+      RespVersion::Resp3 | RespVersion::TryResp3 => true,
+      _ => false,
+    }
+  }
+}
 
 /// Arguments passed to the SHUTDOWN command.
 ///
@@ -605,6 +640,10 @@ pub struct RedisConfig {
   /// Default: `false`
   #[cfg(feature = "partial-tracing")]
   pub tracing: bool,
+  /// The Redis protocol version to use after establishing connections.
+  ///
+  /// Default: `RespVersion::Resp2`
+  pub resp_version: RespVersion,
 }
 
 impl Default for RedisConfig {
@@ -616,6 +655,7 @@ impl Default for RedisConfig {
       username: None,
       password: None,
       server: ServerConfig::default(),
+      resp_version: RespVersion::default(),
       #[cfg(feature = "enable-tls")]
       tls: None,
       #[cfg(feature = "partial-tracing")]

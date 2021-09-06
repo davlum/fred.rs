@@ -12,6 +12,7 @@ This document gives some background on how the library is structured and how to 
 ## TODO List
 
 * Streams
+* Client Tracking
 * [WIP] RESP3 support (see [redis-protocol](https://crates.io/crates/redis-protocol)). 
 * Redis version 7.x commands
 * Mocking layer

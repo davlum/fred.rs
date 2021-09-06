@@ -83,6 +83,9 @@ pub mod pool;
 /// The structs and enums used by the Redis client.
 pub mod types;
 
+#[cfg(feature = "monitor")]
+pub mod monitor;
+
 /// Convenience module to `use` a `RedisClient`, `RedisError`, and any argument types.
 pub mod prelude {
   pub use crate::client::RedisClient;

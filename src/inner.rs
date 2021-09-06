@@ -10,6 +10,7 @@ use crate::protocol::connection::{
 use crate::protocol::types::{DefaultResolver, RedisCommand};
 use crate::protocol::utils as protocol_utils;
 use crate::types::*;
+use crate::utils;
 use parking_lot::RwLock;
 use redis_protocol::resp2::types::Frame as ProtocolFrame;
 use std::collections::VecDeque;
@@ -268,10 +269,54 @@ pub struct RedisClientInner {
 }
 
 impl RedisClientInner {
+  /// Create a new empty client.
+  pub fn new(config: RedisConfig) -> Arc<RedisClientInner> {
+    let state = ClientState::Disconnected;
+    let backchannel = Backchannel::default();
+    let latency = LatencyStats::default();
+    let network_latency = LatencyStats::default();
+    let req_size = SizeStats::default();
+    let res_size = SizeStats::default();
+    let id = Arc::new(format!("fred-{}", utils::random_string(10)));
+    let resolver = DefaultResolver::new(&id);
+
+    Arc::new(RedisClientInner {
+      config: RwLock::new(config),
+      policy: RwLock::new(None),
+      state: RwLock::new(state),
+      error_tx: RwLock::new(VecDeque::new()),
+      message_tx: RwLock::new(VecDeque::new()),
+      keyspace_tx: RwLock::new(VecDeque::new()),
+      reconnect_tx: RwLock::new(VecDeque::new()),
+      connect_tx: RwLock::new(VecDeque::new()),
+      command_tx: RwLock::new(None),
+      reconnect_sleep_jh: RwLock::new(None),
+      latency_stats: RwLock::new(latency),
+      network_latency_stats: RwLock::new(network_latency),
+      req_size_stats: Arc::new(RwLock::new(req_size)),
+      res_size_stats: Arc::new(RwLock::new(res_size)),
+      cmd_buffer_len: Arc::new(AtomicUsize::new(0)),
+      redeliver_count: Arc::new(AtomicUsize::new(0)),
+      connection_closed_tx: RwLock::new(None),
+      multi_block: RwLock::new(None),
+      cluster_state: RwLock::new(None),
+      backchannel: Arc::new(AsyncRwLock::new(backchannel)),
+      resolver,
+      id,
+    })
+  }
+
+  /// Whether or not the client uses RESP3.
+  pub fn is_resp3(&self) -> bool {
+    self.config.read().resp_version.is_resp3()
+  }
+
+  /// Whether or not the client has pipelining enabled.
   pub fn is_pipelined(&self) -> bool {
     self.config.read().pipeline
   }
 
+  /// Print a log line with the client name.
   pub fn log_client_name_fn<F>(&self, level: log::Level, func: F)
   where
     F: FnOnce(&str),
@@ -281,24 +326,29 @@ impl RedisClientInner {
     }
   }
 
+  /// Read the random client name assigned by this library.
   pub fn client_name(&self) -> &str {
     self.id.as_str()
   }
 
+  /// Read a shared reference to the client name.
   pub fn client_name_ref(&self) -> &Arc<String> {
     &self.id
   }
 
+  /// Update the cluster state in place.
   pub fn update_cluster_state(&self, state: Option<ClusterKeyCache>) {
     let mut guard = self.cluster_state.write();
     *guard = state;
   }
 
+  /// Whether or not the client has tracing enabled.
   #[cfg(feature = "partial-tracing")]
   pub fn should_trace(&self) -> bool {
     self.config.read().tracing
   }
 
+  /// Whether or not the client has tracing enabled.
   #[cfg(not(feature = "partial-tracing"))]
   pub fn should_trace(&self) -> bool {
     false

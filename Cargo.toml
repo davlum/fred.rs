@@ -70,3 +70,4 @@ network-logs = []
 custom-reconnect-errors = []
 # a testing feature to randomly stop, restart, and rebalance the cluster while tests are running
 chaos-monkey = ["custom-reconnect-errors"]
+monitor = []

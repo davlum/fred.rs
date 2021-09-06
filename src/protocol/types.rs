@@ -2,11 +2,14 @@ use super::utils as protocol_utils;
 use crate::client::RedisClient;
 use crate::error::{RedisError, RedisErrorKind};
 use crate::globals::globals;
+use crate::protocol::codec::RespFrame;
 use crate::types::*;
 use crate::utils;
 use crate::utils::{set_locked, take_locked};
 use parking_lot::RwLock;
+use rand::Rng;
 pub use redis_protocol::{redis_keyslot, resp2::types::NULL, types::CRLF};
+use std::borrow::Cow;
 use std::collections::{BTreeSet, VecDeque};
 use std::fmt;
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -21,8 +24,8 @@ use crate::trace::disabled::Span as FakeSpan;
 use crate::trace::CommandTraces;
 #[cfg(any(feature = "full-tracing", feature = "partial-tracing"))]
 use crate::trace::Span;
-use rand::Rng;
-use std::borrow::Cow;
+
+pub type MonitorStream = Arc<RwLock<UnboundedSender<RespFrame>>>;
 
 pub const REDIS_CLUSTER_SLOTS: u16 = 16384;
 
@@ -361,7 +364,6 @@ pub enum RedisCommandKind {
   MemoryUsage,
   Mget,
   Migrate,
-  Monitor,
   Move,
   Mset,
   Msetnx,
@@ -477,6 +479,7 @@ pub enum RedisCommandKind {
   _ScriptLoadCluster(AllNodesResponse),
   _ScriptKillCluster(AllNodesResponse),
   _Custom(CustomCommand),
+  _Monitor(MonitorStream),
 }
 
 impl fmt::Debug for RedisCommandKind {
@@ -755,7 +758,6 @@ impl RedisCommandKind {
       RedisCommandKind::MemoryUsage => "MEMORY USAGE",
       RedisCommandKind::Mget => "MGET",
       RedisCommandKind::Migrate => "MIGRATE",
-      RedisCommandKind::Monitor => "MONITOR",
       RedisCommandKind::Move => "MOVE",
       RedisCommandKind::Mset => "MSET",
       RedisCommandKind::Msetnx => "MSETNX",
@@ -870,6 +872,7 @@ impl RedisCommandKind {
       RedisCommandKind::_ScriptFlushCluster(_) => "SCRIPT FLUSH CLUSTER",
       RedisCommandKind::_ScriptLoadCluster(_) => "SCRIPT LOAD CLUSTER",
       RedisCommandKind::_ScriptKillCluster(_) => "SCRIPT Kill CLUSTER",
+      RedisCommandKind::_Monitor(_) => "MONITOR",
       RedisCommandKind::_Custom(ref kind) => kind.cmd,
     }
   }
@@ -1011,7 +1014,6 @@ impl RedisCommandKind {
       RedisCommandKind::MemoryUsage => "MEMORY",
       RedisCommandKind::Mget => "MGET",
       RedisCommandKind::Migrate => "MIGRATE",
-      RedisCommandKind::Monitor => "MONITOR",
       RedisCommandKind::Move => "MOVE",
       RedisCommandKind::Mset => "MSET",
       RedisCommandKind::Msetnx => "MSETNX",
@@ -1123,6 +1125,7 @@ impl RedisCommandKind {
       RedisCommandKind::Hscan(_) => "HSCAN",
       RedisCommandKind::Zscan(_) => "ZSCAN",
       RedisCommandKind::_AuthAllCluster(_) => "AUTH",
+      RedisCommandKind::_Monitor(_) => "MONITOR",
       RedisCommandKind::_Custom(ref kind) => kind.cmd,
       RedisCommandKind::_Close | RedisCommandKind::_Split(_) => {
         panic!("unreachable (redis command)")

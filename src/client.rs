@@ -136,41 +136,9 @@ impl<'a> From<&'a Arc<RedisClientInner>> for RedisClient {
 impl RedisClient {
   /// Create a new client instance without connecting to the server.
   pub fn new(config: RedisConfig) -> RedisClient {
-    let state = ClientState::Disconnected;
-    let backchannel = Backchannel::default();
-    let latency = LatencyStats::default();
-    let network_latency = LatencyStats::default();
-    let req_size = SizeStats::default();
-    let res_size = SizeStats::default();
-    let id = Arc::new(format!("fred-{}", utils::random_string(10)));
-    let resolver = DefaultResolver::new(&id);
-
-    let inner = Arc::new(RedisClientInner {
-      config: RwLock::new(config),
-      policy: RwLock::new(None),
-      state: RwLock::new(state),
-      error_tx: RwLock::new(VecDeque::new()),
-      message_tx: RwLock::new(VecDeque::new()),
-      keyspace_tx: RwLock::new(VecDeque::new()),
-      reconnect_tx: RwLock::new(VecDeque::new()),
-      connect_tx: RwLock::new(VecDeque::new()),
-      command_tx: RwLock::new(None),
-      reconnect_sleep_jh: RwLock::new(None),
-      latency_stats: RwLock::new(latency),
-      network_latency_stats: RwLock::new(network_latency),
-      req_size_stats: Arc::new(RwLock::new(req_size)),
-      res_size_stats: Arc::new(RwLock::new(res_size)),
-      cmd_buffer_len: Arc::new(AtomicUsize::new(0)),
-      redeliver_count: Arc::new(AtomicUsize::new(0)),
-      connection_closed_tx: RwLock::new(None),
-      multi_block: RwLock::new(None),
-      cluster_state: RwLock::new(None),
-      backchannel: Arc::new(AsyncRwLock::new(backchannel)),
-      resolver,
-      id,
-    });
-
-    RedisClient { inner }
+    RedisClient {
+      inner: RedisClientInner::new(config),
+    }
   }
 
   /// The unique ID identifying this client and underlying connections. All connections will use the ID of the client that created them.
@@ -193,6 +161,11 @@ impl RedisClient {
   /// Whether or not the client has a reconnection policy.
   pub fn has_reconnect_policy(&self) -> bool {
     self.inner.policy.read().is_some()
+  }
+
+  /// Read the Redis protocol version used by the client.
+  pub fn resp_version(&self) -> RespVersion {
+    self.inner.config.read().resp_version.clone()
   }
 
   /// Connect to the Redis server with an optional reconnection policy.

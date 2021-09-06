@@ -180,7 +180,7 @@ pub async fn create_authenticated_connection_tls(
   inner: &Arc<RedisClientInner>,
 ) -> Result<FramedTls, RedisError> {
   let server = format!("{}:{}", addr.ip().to_string(), addr.port());
-  let codec = RedisCodec::new(inner, server);
+  let codec = RedisCodec::new(inner, server, &inner.config);
   let client_name = inner.client_name();
   let password = inner.config.read().password.clone();
   let username = inner.config.read().username.clone();
