@@ -1,11 +1,11 @@
 use crate::commands;
 use crate::error::{RedisError, RedisErrorKind};
-use crate::inner::{MultiPolicy, RedisClientInner};
-use crate::metrics::*;
+use crate::modules::inner::{MultiPolicy, RedisClientInner};
+use crate::modules::metrics::Stats;
+use crate::modules::response::RedisResponse;
 use crate::multiplexer::commands as multiplexer_commands;
 use crate::multiplexer::utils as multiplexer_utils;
 use crate::protocol::types::RedisCommand;
-use crate::response::RedisResponse;
 use crate::types::*;
 use crate::utils;
 use futures::Stream;

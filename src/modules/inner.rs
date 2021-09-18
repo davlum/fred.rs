@@ -21,7 +21,7 @@ use tokio::sync::RwLock as AsyncRwLock;
 use tokio::task::JoinHandle;
 
 #[cfg(feature = "metrics")]
-use crate::metrics::MovingStats;
+use crate::modules::metrics::MovingStats;
 
 /// State sent to the task that performs reconnection logic.
 pub struct ClosedState {

@@ -1,6 +1,6 @@
 use crate::error::{RedisError, RedisErrorKind};
 use crate::globals::globals;
-use crate::inner::RedisClientInner;
+use crate::modules::inner::RedisClientInner;
 use crate::multiplexer::utils as multiplexer_utils;
 use crate::multiplexer::ConnectionIDs;
 use crate::protocol::types::{RedisCommand, RedisCommandKind};

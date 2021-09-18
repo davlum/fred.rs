@@ -1,5 +1,5 @@
 use crate::error::RedisError;
-use crate::inner::RedisClientInner;
+use crate::modules::inner::RedisClientInner;
 use crate::protocol::utils as protocol_utils;
 use bytes::BytesMut;
 use parking_lot::RwLock;
@@ -13,7 +13,7 @@ use tokio_util::codec::{Decoder, Encoder};
 #[cfg(feature = "blocking-encoding")]
 use crate::globals::globals;
 #[cfg(feature = "metrics")]
-use crate::metrics::MovingStats;
+use crate::modules::metrics::MovingStats;
 #[cfg(feature = "network-logs")]
 use std::str;
 

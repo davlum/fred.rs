@@ -1,5 +1,5 @@
 use crate::error::{RedisError, RedisErrorKind};
-use crate::inner::RedisClientInner;
+use crate::modules::inner::RedisClientInner;
 use crate::protocol::connection::OK;
 use crate::protocol::types::*;
 use crate::types::Resolve;

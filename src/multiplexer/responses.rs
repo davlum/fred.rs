@@ -1,5 +1,5 @@
 use crate::error::{RedisError, RedisErrorKind};
-use crate::inner::RedisClientInner;
+use crate::modules::inner::RedisClientInner;
 use crate::multiplexer::utils;
 use crate::multiplexer::{Counters, SentCommand, SentCommands};
 use crate::protocol::types::RedisCommandKind;
@@ -20,7 +20,7 @@ use tokio::sync::RwLock as AsyncRwLock;
 #[cfg(feature = "custom-reconnect-errors")]
 use crate::globals::globals;
 #[cfg(feature = "metrics")]
-use crate::metrics::MovingStats;
+use crate::modules::metrics::MovingStats;
 
 const LAST_CURSOR: &'static str = "0";
 const KEYSPACE_PREFIX: &'static str = "__keyspace@";
