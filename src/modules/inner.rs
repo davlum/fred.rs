@@ -225,7 +225,7 @@ impl Backchannel {
   }
 }
 
-pub struct RedisClientInner {
+pub struct RedisClientInner<R = DefaultResolver> {
   /// The client ID as seen by the server.
   pub id: Arc<String>,
   /// The response policy to apply when the client is in a MULTI block.
@@ -259,7 +259,7 @@ pub struct RedisClientInner {
   /// The cached view of the cluster state, if running against a clustered deployment.
   pub cluster_state: RwLock<Option<ClusterKeyCache>>,
   /// The DNS resolver to use when establishing new connections.
-  pub resolver: DefaultResolver,
+  pub resolver: R,
   /// A backchannel that can be used to control the multiplexer connections even while the connections are blocked.
   pub backchannel: Arc<AsyncRwLock<Backchannel>>,
 
@@ -279,9 +279,17 @@ pub struct RedisClientInner {
 
 impl RedisClientInner {
   pub fn new(config: RedisConfig) -> Arc<RedisClientInner> {
-    let backchannel = Backchannel::default();
     let id = Arc::new(format!("fred-{}", utils::random_string(10)));
     let resolver = DefaultResolver::new(&id);
+
+    RedisClientInner::new_with_resolver(Some(id), config, resolver)
+  }
+}
+
+impl<R: Resolve> RedisClientInner<R> {
+  pub fn new_with_resolver(id: Option<Arc<String>>, config: RedisConfig, resolver: R) -> Arc<RedisClientInner<R>> {
+    let backchannel = Backchannel::default();
+    let id = id.unwrap_or(Arc::new(format!("fred-{}", utils::random_string(10))));
 
     Arc::new(RedisClientInner {
       #[cfg(feature = "metrics")]

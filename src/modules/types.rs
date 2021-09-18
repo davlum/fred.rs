@@ -2932,9 +2932,8 @@ impl<'a> From<&'a ZRange> for ZRange {
 /// A trait that can be used to override DNS resolution logic for a client.
 ///
 /// Note: using this requires [async-trait](https://crates.io/crates/async-trait).
-// TODO expose this to callers so they can do their own DNS resolution
 #[async_trait]
-pub(crate) trait Resolve: Send + Sync + 'static {
+pub trait Resolve: Send + Sync + 'static {
   /// Resolve a hostname.
   async fn resolve(&self, host: String, port: u16) -> Result<SocketAddr, RedisError>;
 }

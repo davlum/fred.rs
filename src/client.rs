@@ -135,10 +135,20 @@ impl<'a> From<&'a Arc<RedisClientInner>> for RedisClient {
 }
 
 impl RedisClient {
-  /// Create a new client instance without connecting to the server.
-  pub fn new(config: RedisConfig) -> RedisClient {
+  /// Create a new client without connecting to the server.
+  pub fn new(config: RedisConfig) -> Self {
     RedisClient {
       inner: RedisClientInner::new(config),
+    }
+  }
+
+  /// Create a new client with the provided resolver.
+  pub fn new_with_resolver<R>(config: RedisConfig, resolver: R) -> Self
+  where
+    R: Resolve,
+  {
+    RedisClient {
+      inner: RedisClientInner::new_with_resolver(None, config, resolver),
     }
   }
 

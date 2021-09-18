@@ -5,7 +5,7 @@ use crate::error::{RedisError, RedisErrorKind};
 #[cfg(feature = "enable-tls")]
 use crate::types::RedisConfig;
 #[cfg(feature = "enable-tls")]
-use native_tls::{Certificate, Protocol, TlsConnector as NativeTlsConnector};
+use native_tls::{Certificate, Identity, Protocol, TlsConnector as NativeTlsConnector};
 #[cfg(feature = "enable-tls")]
 use parking_lot::RwLock;
 #[cfg(feature = "enable-tls")]
@@ -41,12 +41,13 @@ pub fn should_disable_host_verification() -> bool {
   }
 }
 
-/// Configuration for Tls Connections
+/// Configuration for Tls connections
 ///
-/// See <https://docs.rs/tokio-native-tls/0.3.0/tokio_native_tls/native_tls/struct.TlsConnectorBuilder.html> for more information.
+/// See the [native tls docs](https://docs.rs/tokio-native-tls/0.3.0/tokio_native_tls/native_tls/struct.TlsConnectorBuilder.html) for more information.
 #[cfg(feature = "enable-tls")]
 #[derive(Clone)]
 pub struct TlsConfig {
+  pub identity: Option<Identity>,
   pub root_certs: Option<Vec<Certificate>>,
   pub min_protocol_version: Option<Protocol>,
   pub max_protocol_version: Option<Protocol>,
@@ -58,6 +59,7 @@ pub struct TlsConfig {
 impl Default for TlsConfig {
   fn default() -> Self {
     TlsConfig {
+      identity: None,
       root_certs: None,
       min_protocol_version: None,
       max_protocol_version: None,
@@ -67,9 +69,7 @@ impl Default for TlsConfig {
   }
 }
 
-/// Configuration for Tls Connections
-///
-/// See https://docs.rs/tokio-native-tls/0.3.0/tokio_native_tls/native_tls/struct.TlsConnectorBuilder.html for more information.
+/// Configuration for Tls connections
 #[cfg(not(feature = "enable-tls"))]
 #[derive(Clone)]
 pub struct TlsConfig;
@@ -107,6 +107,10 @@ pub fn create_tls_connector(config: &RwLock<RedisConfig>) -> Result<TlsConnector
   }
 
   if let Some(ref config) = config.read().tls {
+    if let Some(ref identity) = config.identity {
+      builder.identity(identity.clone());
+    }
+
     if let Some(ref root_certs) = config.root_certs {
       for cert in root_certs.iter() {
         builder.add_root_certificate(cert.clone());
