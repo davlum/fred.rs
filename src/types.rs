@@ -24,6 +24,8 @@ use std::str;
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 
+#[cfg(feature = "metrics")]
+pub use crate::metrics::Stats;
 pub use crate::response::RedisResponse;
 
 #[cfg(feature = "index-map")]

@@ -41,14 +41,6 @@
 //!
 //! See the [github repository](https://github.com/aembke/fred.rs) for more examples.
 //!
-extern crate bytes;
-extern crate float_cmp;
-extern crate futures;
-extern crate parking_lot;
-extern crate rand;
-extern crate redis_protocol;
-extern crate tokio;
-extern crate url;
 #[macro_use]
 extern crate async_trait;
 
@@ -73,15 +65,12 @@ mod macros;
 
 mod commands;
 mod inner;
+mod metrics;
 mod multiplexer;
 mod protocol;
 mod response;
 mod trace;
 mod utils;
-
-/// An interface to run the `MONITOR` command.
-#[cfg(feature = "monitor")]
-pub mod monitor;
 
 /// The primary interface for communicating with the Redis server.
 pub mod client;
@@ -89,8 +78,9 @@ pub mod client;
 pub mod error;
 /// Utility functions for manipulating global values that can affect performance.
 pub mod globals;
-/// Metrics describing the latency and size of commands sent to the Redis server.
-pub mod metrics;
+/// An interface to run the `MONITOR` command.
+#[cfg(feature = "monitor")]
+pub mod monitor;
 /// Client pooling structs.
 pub mod pool;
 /// The structs and enums used by the Redis client.

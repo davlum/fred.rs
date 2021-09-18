@@ -1,31 +1,31 @@
 use std::cmp;
 
 /// Stats describing a distribution of samples.
-pub struct DistributionStats {
-  pub min: u64,
-  pub max: u64,
+pub struct Stats {
+  pub min: i64,
+  pub max: i64,
   pub avg: f64,
   pub stddev: f64,
   pub samples: u64,
-  pub sum: u64,
+  pub sum: i64,
 }
 
-/// Stats describing latency metrics for requests.
-pub struct LatencyStats {
+/// Struct for tracking moving stats about network latency or request/response sizes.
+pub struct MovingStats {
   pub min: i64,
   pub max: i64,
   pub avg: f64,
   pub variance: f64,
-  pub samples: usize,
-  pub sum: u64,
+  pub samples: u64,
+  pub sum: i64,
   old_avg: f64,
   s: f64,
   old_s: f64,
 }
 
-impl Default for LatencyStats {
+impl Default for MovingStats {
   fn default() -> Self {
-    LatencyStats {
+    MovingStats {
       min: 0,
       max: 0,
       avg: 0.0,
@@ -39,30 +39,30 @@ impl Default for LatencyStats {
   }
 }
 
-impl LatencyStats {
-  pub fn sample(&mut self, latency: i64) {
+impl MovingStats {
+  pub fn sample(&mut self, value: i64) {
     self.samples += 1;
-    let latency_count = self.samples as f64;
-    let latency_f = latency as f64;
-    self.sum += cmp::max(0, latency) as u64;
+    let num_samples = self.samples as f64;
+    let value_f = value as f64;
+    self.sum += value;
 
     if self.samples == 1 {
-      self.avg = latency_f;
+      self.avg = value_f;
       self.variance = 0.0;
-      self.old_avg = latency_f;
+      self.old_avg = value_f;
       self.old_s = 0.0;
-      self.min = latency;
-      self.max = latency;
+      self.min = value;
+      self.max = value;
     } else {
-      self.avg = self.old_avg + (latency_f - self.old_avg) / latency_count;
-      self.s = self.old_s + (latency_f - self.old_avg) * (latency_f - self.avg);
+      self.avg = self.old_avg + (value_f - self.old_avg) / num_samples;
+      self.s = self.old_s + (value_f - self.old_avg) * (value_f - self.avg);
 
       self.old_avg = self.avg;
       self.old_s = self.s;
-      self.variance = self.s / (latency_count - 1.0);
+      self.variance = self.s / (num_samples - 1.0);
 
-      self.min = cmp::min(self.min, latency);
-      self.max = cmp::max(self.max, latency);
+      self.min = cmp::min(self.min, value);
+      self.max = cmp::max(self.max, value);
     }
   }
 
@@ -78,112 +78,20 @@ impl LatencyStats {
     self.old_avg = 0.0;
   }
 
-  pub fn read_metrics(&self) -> DistributionStats {
+  pub fn read_metrics(&self) -> Stats {
     self.into()
   }
 
-  pub fn take_metrics(&mut self) -> DistributionStats {
+  pub fn take_metrics(&mut self) -> Stats {
     let metrics = self.read_metrics();
     self.reset();
     metrics
   }
 }
 
-impl<'a> From<&'a LatencyStats> for DistributionStats {
-  fn from(stats: &'a LatencyStats) -> DistributionStats {
-    DistributionStats {
-      avg: stats.avg,
-      stddev: stats.variance.sqrt(),
-      min: cmp::max(stats.min, 0) as u64,
-      max: cmp::max(stats.max, 0) as u64,
-      samples: stats.samples as u64,
-      sum: stats.sum,
-    }
-  }
-}
-
-/// Stats describing sizes (in bytes) for requests or responses.
-pub struct SizeStats {
-  pub min: u64,
-  pub max: u64,
-  pub avg: f64,
-  pub variance: f64,
-  pub samples: usize,
-  pub sum: u64,
-  old_avg: f64,
-  s: f64,
-  old_s: f64,
-}
-
-impl Default for SizeStats {
-  fn default() -> Self {
-    SizeStats {
-      min: 0,
-      max: 0,
-      avg: 0.0,
-      variance: 0.0,
-      samples: 0,
-      sum: 0,
-      s: 0.0,
-      old_s: 0.0,
-      old_avg: 0.0,
-    }
-  }
-}
-
-impl SizeStats {
-  pub fn sample(&mut self, size: u64) {
-    self.samples = self.samples.saturating_add(1);
-    let size_count = self.samples as f64;
-    let size_f = size as f64;
-    self.sum = self.sum.saturating_add(size);
-
-    if self.samples == 1 {
-      self.avg = size_f;
-      self.variance = 0.0;
-      self.old_avg = size_f;
-      self.old_s = 0.0;
-      self.min = size;
-      self.max = size;
-    } else {
-      self.avg = self.old_avg + (size_f - self.old_avg) / size_count;
-      self.s = self.old_s + (size_f - self.old_avg) * (size_f - self.avg);
-
-      self.old_avg = self.avg;
-      self.old_s = self.s;
-      self.variance = self.s / (size_count - 1.0);
-
-      self.min = cmp::min(self.min, size);
-      self.max = cmp::max(self.max, size);
-    }
-  }
-
-  pub fn reset(&mut self) {
-    self.min = 0;
-    self.max = 0;
-    self.avg = 0.0;
-    self.variance = 0.0;
-    self.samples = 0;
-    self.sum = 0;
-    self.s = 0.0;
-    self.old_s = 0.0;
-    self.old_avg = 0.0;
-  }
-
-  pub fn read_metrics(&self) -> DistributionStats {
-    self.into()
-  }
-
-  pub fn take_metrics(&mut self) -> DistributionStats {
-    let metrics = self.read_metrics();
-    self.reset();
-    metrics
-  }
-}
-
-impl<'a> From<&'a SizeStats> for DistributionStats {
-  fn from(stats: &'a SizeStats) -> DistributionStats {
-    DistributionStats {
+impl<'a> From<&'a MovingStats> for Stats {
+  fn from(stats: &'a MovingStats) -> Stats {
+    Stats {
       avg: stats.avg,
       stddev: stats.variance.sqrt(),
       min: stats.min,

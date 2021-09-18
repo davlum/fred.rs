@@ -1,4 +1,4 @@
-use crate::error::*;
+use crate::error::{RedisError, RedisErrorKind};
 use crate::inner::RedisClientInner;
 use crate::protocol::connection::OK;
 use crate::protocol::types::*;
